@@ -23,6 +23,7 @@ DEFAULT_QUERIES_PATH = "tpcds/"
 
 thread_flags = []
 thread_results = []
+failure_counts = []
 file_name = str(time.time())
 stats_file =  open("%s.stat"%file_name, "a")
 log_file = open("%s.log"%file_name, "a")
@@ -70,6 +71,7 @@ def make_request(index, params):
       thread_results[index]+=1
     except Exception as e:
       print(e)
+      failure_counts[index] += 1
     finally:
       curr.close()
 
@@ -93,7 +95,7 @@ if __name__ == "__main__":
     'bucket_start_index': int(args.bucket_start_index),
     'bucket_end_index': int(args.bucket_end_index),
     'duration': int(args.duration),
-    'schemas': ["bucket_%d_tpcds_sf100_orc" % e for e in range(int(args.bucket_start_index), int(args.bucket_end_index) + 1)]
+    'schemas': ["bucket%d_tpcds_sf1" % e for e in range(int(args.bucket_start_index), int(args.bucket_end_index) + 1)]
   }
 
   parallelisms = [int(e) for e in args.parallelisms.split(",")]
@@ -108,6 +110,7 @@ if __name__ == "__main__":
     for i in range(parallelism):
       thread_flags.append(True)
       thread_results.append(0)
+      failure_counts.append(0)
       threads.append(threading.Thread(target=make_request, args=(i, params,)))
       threads[-1].start()
       time.sleep(1)
@@ -116,7 +119,8 @@ if __name__ == "__main__":
     waiting_time = time.time()
     while (time.time() - waiting_time) < params['duration']:
       time.sleep(60)
-      fetch_memory_profile(params)
+      print("Total queries run: %d in time %d sec, failure count: %d\n" % (sum(thread_results), (time.time() - start_time), sum(failure_counts)))
+      # fetch_memory_profile(params)
 
     # Tell threads to stop new queries
     for i in range(len(thread_flags)):
